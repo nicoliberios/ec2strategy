@@ -14,6 +14,7 @@ jobs:
     strategy:
       matrix:
         server: [1, 2, 3, 4, 5, 6] # Definir las instancias como una matriz de números
+        host: [HOST1_DNS, HOST2_DNS, HOST3_DNS, HOST4_DNS, HOST5_DNS, HOST6_DNS]
 
     steps:
       # Paso 1: Configuración de secretos
@@ -22,11 +23,20 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      # Paso 2: Instalar Apache y preparar el servidor (solo si no está instalado)
-      - name: Install Apache and Prepare Server ${{ matrix.server }}
+      # Paso 2: Desplegar los archivos directamente en el directorio /var/www/html de las instancias EC2
+      - name: Deploy to Apache Server ${{ matrix.server }}
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ matrix.host}} # Usando el secret dinámico para cada servidor
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: /var/www/html # Desplegar directamente en el directorio Apache
+
+      # Paso 3: Instalar Apache y configurar permisos en las instancias EC2
+      - name: Configure Apache and Permissions for Server ${{ matrix.server }}
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets['HOST${{ matrix.server }}_DNS'] }} # Usando el secret dinámico para cada servidor
+          host: ${{ matrix.host }} # Usar el secret dinámico para la IP/DNS
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -44,23 +54,3 @@ jobs:
 
             # Reiniciar Apache para aplicar los cambios
             sudo systemctl restart apache2
-
-      # Paso 3: Desplegar los archivos directamente en el directorio /var/www/html de las instancias EC2
-      - name: Deploy to Apache Server ${{ matrix.server }}
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets['HOST${{ matrix.server }}_DNS'] }} # Usando el secret dinámico para cada servidor
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html # Desplegar directamente en el directorio Apache
-
-      # (Opcional) Paso 4: Verificar si necesitas algún otro paso de configuración adicional, como reiniciar el servidor o ajustar configuraciones
-      - name: Final Configurations for Server ${{ matrix.server }}
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets['HOST${{ matrix.server }}_DNS'] }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Realizar cualquier configuración adicional si es necesario
-            echo "Configuraciones finales completadas para el servidor ${{ matrix.server }}"
