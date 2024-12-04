@@ -52,7 +52,7 @@
                 <th>Fiestas</th>
                 <th>Rios</th>
                 <th>Tradicion</th>
-                <th>Playas</th>
+                <th>Piscinas</th>
                 <th>Agricultura</th>
             </tr>
         </thead>

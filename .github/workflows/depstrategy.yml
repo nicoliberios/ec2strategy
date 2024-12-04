@@ -1,49 +1,54 @@
-name: Deploy to EC2 Servers
+name: Deploy Nicolas
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-
 jobs:
   deploy:
+    name: Deploy to EC21 on main
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        server: [1, 2, 3, 4, 5, 6] # Definir las instancias como una matriz de números
 
     steps:
-      # Paso 3: Instalar Apache y configurar permisos en las instancias EC2
-      - name: Configure Apache and Permissions for Server ${{ matrix.server }}
-        uses: appleboy/ssh-action@master # Asegúrate de usar una versión estable, no `master`
-        with:
-          host: ${{ secrets.HOST1_DNS }} # Usar el valor dinámico de la matriz para cada IP/DNS
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Actualizar el sistema y asegurarse de que Apache esté instalado
-            sudo apt-get update
-            sudo apt-get install -y apache2 php libapache2-mod-php
+      - name: Checkout the files
+        uses: actions/checkout@v2
 
-            # Habilitar y arrancar Apache
-            sudo systemctl enable apache2
-            sudo systemctl start apache2
-
-            # Cambiar permisos del directorio de Apache para asegurarse de que Apache pueda acceder a los archivos
-            sudo chown -R www-data:www-data /var/www/html
-            sudo chmod -R 755 /var/www/html
-
-            # Reiniciar Apache para aplicar los cambios
-            sudo systemctl restart apache2
-
-      # Paso 2: Desplegar los archivos directamente en el directorio /var/www/html de las instancias EC2
-      - name: Deploy to Apache Server ${{ matrix.server }}
+      - name: Deploy to Server EC21
         uses: easingthemes/ssh-deploy@main
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST1_DNS }} # Usando el valor dinámico de la matriz para cada servidor
+          REMOTE_HOST: ${{ secrets.HOST21_DNS }}
           REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html # Desplegar directamente en el directorio Apache
+          TARGET: ${{ secrets.TARGET_DIR }}
+
+      - name: Executing remote ssh commands using ssh key
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST21_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Actualiza el sistema y Apache
+            sudo apt-get -y update
+            sudo apt-get install -y apache2
+            sudo apt-get install -y php libapache2-mod-php
+            sudo systemctl start apache2
+            sudo systemctl enable apache2
+            # Elimina archivos antiguos en el directorio de Apache
+            sudo rm -rf /var/www/html/*
+
+            # Elimina archivos antiguos en el directorio de Apache
+            sudo rm -rf /var/www/html/*
+
+            # Cambia al directorio donde están tus archivos clonados
+            cd /home/${{ secrets.USERNAME }}/{{ secrets.TARGET_DIR }}
+
+            # Mueve todos los archivos al directorio de Apache
+            sudo mv * /var/www/html
+
+            # Cambia los permisos para que Apache pueda acceder a los archivos
+            sudo chown -R www-data:www-data /var/www/html
+            sudo chmod -R 755 /var/www/html
+
+            # Reinicia Apache para aplicar los cambios
+            sudo systemctl restart apache2
