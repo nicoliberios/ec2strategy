@@ -1,0 +1,66 @@
+name: Deploy to EC2 Servers
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        server: [1, 2, 3, 4, 5, 6] # Definir las instancias como una matriz de números
+
+    steps:
+      # Paso 1: Configuración de secretos
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      # Paso 2: Instalar Apache y preparar el servidor (solo si no está instalado)
+      - name: Install Apache and Prepare Server ${{ matrix.server }}
+        uses: appleboy/ssh-action@main
+        with:
+          host: ${{ secrets['HOST${{ matrix.server }}_DNS'] }} # Usando el secret dinámico para cada servidor
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Actualizar el sistema y asegurarse de que Apache esté instalado
+            sudo apt-get update
+            sudo apt-get install -y apache2 php libapache2-mod-php
+
+            # Habilitar y arrancar Apache
+            sudo systemctl enable apache2
+            sudo systemctl start apache2
+
+            # Cambiar permisos del directorio de Apache para asegurarse de que Apache pueda acceder a los archivos
+            sudo chown -R www-data:www-data /var/www/html
+            sudo chmod -R 755 /var/www/html
+
+            # Reiniciar Apache para aplicar los cambios
+            sudo systemctl restart apache2
+
+      # Paso 3: Desplegar los archivos directamente en el directorio /var/www/html de las instancias EC2
+      - name: Deploy to Apache Server ${{ matrix.server }}
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets['HOST${{ matrix.server }}_DNS'] }} # Usando el secret dinámico para cada servidor
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: /var/www/html # Desplegar directamente en el directorio Apache
+
+      # (Opcional) Paso 4: Verificar si necesitas algún otro paso de configuración adicional, como reiniciar el servidor o ajustar configuraciones
+      - name: Final Configurations for Server ${{ matrix.server }}
+        uses: appleboy/ssh-action@main
+        with:
+          host: ${{ secrets['HOST${{ matrix.server }}_DNS'] }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Realizar cualquier configuración adicional si es necesario
+            echo "Configuraciones finales completadas para el servidor ${{ matrix.server }}"
