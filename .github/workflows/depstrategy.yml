@@ -16,21 +16,6 @@ jobs:
         server: [1, 2, 3, 4, 5, 6] # Definir las instancias como una matriz de números
 
     steps:
-      # Paso 1: Configuración de la clave SSH
-      - name: Set up SSH key
-        uses: webfactory/ssh-agent@master
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-      # Paso 2: Desplegar los archivos directamente en el directorio /var/www/html de las instancias EC2
-      - name: Deploy to Apache Server ${{ matrix.server }}
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST1_DNS }} # Usando el valor dinámico de la matriz para cada servidor
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html # Desplegar directamente en el directorio Apache
-
       # Paso 3: Instalar Apache y configurar permisos en las instancias EC2
       - name: Configure Apache and Permissions for Server ${{ matrix.server }}
         uses: appleboy/ssh-action@master # Asegúrate de usar una versión estable, no `master`
@@ -53,3 +38,12 @@ jobs:
 
             # Reiniciar Apache para aplicar los cambios
             sudo systemctl restart apache2
+
+      # Paso 2: Desplegar los archivos directamente en el directorio /var/www/html de las instancias EC2
+      - name: Deploy to Apache Server ${{ matrix.server }}
+        uses: easingthemes/ssh-deploy@main
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.HOST1_DNS }} # Usando el valor dinámico de la matriz para cada servidor
+          REMOTE_USER: ${{ secrets.USERNAME }}
+          TARGET: /var/www/html # Desplegar directamente en el directorio Apache
