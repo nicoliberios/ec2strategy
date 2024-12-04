@@ -24,7 +24,7 @@ jobs:
 
       # Paso 2: Instalar Apache y preparar el servidor (solo si no está instalado)
       - name: Install Apache and Prepare Server ${{ matrix.server }}
-        uses: appleboy/ssh-action@main
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets['HOST${{ matrix.server }}_DNS'] }} # Usando el secret dinámico para cada servidor
           username: ${{ secrets.USERNAME }}
@@ -56,7 +56,7 @@ jobs:
 
       # (Opcional) Paso 4: Verificar si necesitas algún otro paso de configuración adicional, como reiniciar el servidor o ajustar configuraciones
       - name: Final Configurations for Server ${{ matrix.server }}
-        uses: appleboy/ssh-action@main
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets['HOST${{ matrix.server }}_DNS'] }}
           username: ${{ secrets.USERNAME }}
